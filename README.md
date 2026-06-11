@@ -1,1 +1,46 @@
-# momentum-api
+# Momentum API
+
+Momentum is a full-stack application for building a personal productivity and progress tracking experience across mobile and web. This repository contains the backend service that will power the client apps with APIs, persistence, validation, and future business logic.
+
+The backend is built with Spring Boot, Java 17, Maven, PostgreSQL, and Docker Compose for local app and database setup.
+
+## Requirements
+
+- Docker Desktop
+- Java 17 and the Maven wrapper if running outside Docker
+
+## Run With Docker
+
+Build and start the API with PostgreSQL:
+
+```bash
+docker compose up --build
+```
+
+The API starts on `http://localhost:8080`.
+
+## Run Locally Without Docker App
+
+Start only PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+Run the API:
+
+```bash
+./mvnw spring-boot:run
+```
+
+The API starts on `http://localhost:8080`.
+
+## Health Check
+
+```bash
+curl http://localhost:8080/health
+```
+
+## Documentation
+
+- [Initial plan](docs/initial-plan.md)
