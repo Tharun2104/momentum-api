@@ -31,12 +31,64 @@ Backend:
 - PostgreSQL is connected.
 - Docker is configured.
 - Health endpoint exists.
+- Flyway is configured and owns schema creation.
+- Swagger/OpenAPI is available for local endpoint testing.
+- Run tracking persistence API is implemented.
 
 Frontend:
 
 - Flutter runs on iOS Simulator.
 - Flutter web is enabled.
 - Frontend can communicate with the backend.
+
+## Completed So Far
+
+Backend Phase 1 foundation is complete:
+
+- Created Flyway migration `V1__create_runs_and_route_points.sql`.
+- Created `runs` and `route_points` tables.
+- Added indexes for run start time and route point lookup/order.
+- Added JPA entities: `Run` and `RoutePoint`.
+- Added repositories: `RunRepository` and `RoutePointRepository`.
+- Added DTOs for create requests and API responses.
+- Added Jakarta Bean Validation on request DTOs.
+- Added controller-level `@Valid` request validation.
+- Added `RunService` with the cross-field business rule: `endTime` must be after `startTime`.
+- Added global exception handling for validation, bad request, and not found errors.
+- Added Swagger/OpenAPI documentation.
+- Added backend tests for service behavior and controller validation.
+- Verified Docker startup, Flyway validation, Swagger, and run API smoke tests.
+
+Backend APIs currently available:
+
+- `POST /api/runs`
+- `GET /api/runs`
+- `GET /api/runs/{id}`
+
+Backend implementation style chosen:
+
+- DTOs handle field-level request validation.
+- Service handles business rules and orchestration.
+- Entities are created with constructors instead of broad public setters.
+- The `Run` entity owns adding/removing route points so the JPA relationship stays consistent.
+- Keep comments small and only on important flows.
+
+## Next Task
+
+Next recommended task: Frontend Phase 1 Run Screen.
+
+Build the smallest frontend flow that can use the completed backend API:
+
+- Add a `Run` entry point.
+- Create a Run screen.
+- Add `Start` and `Stop` states.
+- Add a live timer.
+- Track route points in memory.
+- Calculate duration, distance, and average pace.
+- Submit the completed run to `POST /api/runs`.
+- Show a simple saved run summary.
+
+Start with a simple UI and fake/manual route data if needed, then add real GPS with `geolocator` once the API contract is proven from the app.
 
 ## Current Goal
 
@@ -93,18 +145,26 @@ Run:
 - `endTime`
 - `distanceMeters`
 - `durationSeconds`
-- `averagePace`
+- `averagePaceSecondsPerKm`
+- `createdAt`
+- `updatedAt`
 
 RoutePoint:
 
+- `id`
+- `runId`
 - `latitude`
 - `longitude`
-- `timestamp`
+- `recordedAt`
+- `accuracyMeters`
+- `sequenceNumber`
+- `createdAt`
 
 Relationship:
 
 - One `Run` has many `RoutePoint` records.
 - Every saved run contains its route points.
+- Route points are ordered by `sequenceNumber`.
 
 ## GPS Requirements
 
@@ -134,9 +194,9 @@ Create:
 
 APIs:
 
-- `POST /runs`
-- `GET /runs`
-- `GET /runs/{id}`
+- `POST /api/runs`
+- `GET /api/runs`
+- `GET /api/runs/{id}`
 
 Backend rules:
 
@@ -172,10 +232,17 @@ After stop:
 
 ### Phase 1: End-to-End MVP
 
-Build only:
+Backend completed:
 
 - Backend entities.
 - Backend APIs.
+- Flyway schema migration.
+- DTO validation and clean error responses.
+- Swagger endpoint documentation.
+- Basic backend tests.
+
+Frontend remaining:
+
 - Run screen.
 - Start and stop functionality.
 - Timer.
