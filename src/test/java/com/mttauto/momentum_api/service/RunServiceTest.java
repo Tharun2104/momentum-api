@@ -4,6 +4,7 @@ import com.mttauto.momentum_api.dto.CreateRoutePointRequest;
 import com.mttauto.momentum_api.dto.CreateRunRequest;
 import com.mttauto.momentum_api.dto.RunResponse;
 import com.mttauto.momentum_api.exception.ResourceNotFoundException;
+import com.mttauto.momentum_api.repository.RoutePointRepository;
 import com.mttauto.momentum_api.repository.RunRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,9 @@ class RunServiceTest {
 
     @Autowired
     private RunRepository runRepository;
+
+    @Autowired
+    private RoutePointRepository routePointRepository;
 
     @Autowired
     private RunService runService;
@@ -63,6 +67,26 @@ class RunServiceTest {
     @Test
     void getRunByIdThrowsWhenRunDoesNotExist() {
         assertThatThrownBy(() -> runService.getRunById(99L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Run not found with id 99");
+    }
+
+    @Test
+    void deleteRunRemovesRunAndRoutePoints() {
+        RunResponse response = runService.createRun(createValidRequest());
+
+        runService.deleteRun(response.id());
+
+        assertThat(runRepository.findById(response.id())).isEmpty();
+        assertThat(routePointRepository.count()).isZero();
+        assertThatThrownBy(() -> runService.getRunById(response.id()))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Run not found with id " + response.id());
+    }
+
+    @Test
+    void deleteRunThrowsWhenRunDoesNotExist() {
+        assertThatThrownBy(() -> runService.deleteRun(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Run not found with id 99");
     }

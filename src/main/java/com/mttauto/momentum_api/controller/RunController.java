@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,5 +37,11 @@ public class RunController {
     @GetMapping("/{id}")
     public ResponseEntity<RunResponse> getRunById(@PathVariable Long id) {
         return ResponseEntity.ok(runService.getRunById(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRun(@PathVariable Long id) {
+        runService.deleteRun(id);
+        return ResponseEntity.noContent().build();
     }
 }

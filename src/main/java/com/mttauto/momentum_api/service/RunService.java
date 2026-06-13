@@ -57,6 +57,14 @@ public class RunService {
                 .toList();
     }
 
+    @Transactional
+    public void deleteRun(Long id) {
+        Run run = runRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Run not found with id " + id));
+
+        runRepository.delete(run);
+    }
+
     private void validateRunRequest(CreateRunRequest request) {
         // Field-level validation lives on DTOs; this service keeps cross-field business rules.
         if (!request.endTime().isAfter(request.startTime())) {
