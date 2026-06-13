@@ -47,6 +47,8 @@ Frontend:
 - Physical iPhone remote local testing works through ngrok by passing the tunnel URL as `API_BASE_URL`.
 - Saved run history supports deleting runs from the UI.
 - Saved Run Detail supports viewing a completed route on a map.
+- Run screen supports a live map while tracking.
+- Run screen shows pre-start GPS status and GPS diagnostics.
 
 ## Completed So Far
 
@@ -108,6 +110,24 @@ Frontend Phase 1C and Phase 2A are complete:
 - History screen supports deleting a run with a confirmation dialog.
 - Deleting a run calls `DELETE /api/runs/{id}` and refreshes history after success.
 
+Frontend Phase 2B and Phase 2C are complete:
+
+- Run screen shows a live route map while tracking.
+- Live route map uses OpenStreetMap through `flutter_map`.
+- Live route polyline is drawn from accepted GPS route points only.
+- Live route map shows start and current-location markers while running.
+- Live route map can show an end marker after stop.
+- Live map auto-centering follows the latest accepted point while running.
+- A `GpsSignalStatus` model exists with `dead`, `searching`, `weak`, and `good`.
+- Run screen checks GPS service and permission status before Start.
+- Start is enabled for Searching, Weak, and Good GPS.
+- Start is disabled only for Dead/unavailable GPS states.
+- GPS status/helper messages are visible before and during runs.
+- Accepted GPS point count, rejected GPS point count, and latest accuracy are displayed.
+- Accepted route points are filtered for valid coordinates, accuracy, near-duplicate movement, and unrealistic speed.
+- Rejected GPS points can update status/accuracy diagnostics but do not affect distance, pace, live map, sequence numbers, or saved payload.
+- Save flow still posts the completed run once on Stop.
+
 Local backend URL configuration is complete:
 
 - App backend URL is configured through `API_BASE_URL`.
@@ -124,16 +144,18 @@ Important testing note:
 
 ## Next Task
 
-Next recommended task: Frontend Phase 1C.
+Next recommended task: choose the next post-MVP run tracking improvement.
 
-Phase 1C is complete. Saved GPS runs can now be reviewed in the app without opening the database.
+Phase 1C, Phase 2A, Phase 2B, Phase 2C, and Phase 2D are complete. Saved GPS runs can now be reviewed in the app with a saved route map, active runs show a live route map, GPS status/quality filtering is in place, and active runs can be paused and resumed.
 
 Good next candidates:
 
-- Better GPS/debug diagnostics for testing real runs.
 - Better release/profile testing workflow for physical iPhone performance.
-- Saved route map polish and interaction improvements.
 - Isolated backend test database/profile so tests do not mutate local manual history.
+- Route map polish and interaction improvements.
+- More detailed manual QA pass for long real-world runs.
+
+Do not change the backend unless absolutely required.
 
 ## Current Goal
 
@@ -169,6 +191,9 @@ Build only:
 - Basic run history API support.
 - Basic run delete API support.
 - Saved route viewing on Run Detail.
+- Live map while running.
+- GPS quality filters and pre-start GPS status.
+- Pause and resume run tracking.
 
 Do not build yet:
 
@@ -180,7 +205,6 @@ Do not build yet:
 - Notifications.
 - AI coaching.
 - Watch support.
-- Live map while running.
 - Route replay.
 - Route editing.
 
@@ -345,6 +369,75 @@ Status: Completed.
 - Start and end markers.
 - Empty state for runs with fewer than 2 valid route points.
 
+### Frontend Phase 2B: Live Map While Running
+
+Status: Completed.
+
+- Add a live map to the Run screen.
+- Use `flutter_map` and `latlong2`; do not introduce a new map provider.
+- Use the same accepted GPS route points for distance, pace, live polyline, and final backend save.
+- Show a placeholder before GPS starts and while waiting for the first accepted point.
+- Draw a route polyline when at least 2 accepted points exist.
+- Show a start marker at the first accepted point.
+- Show a current location marker at the latest accepted point while running.
+- Show an end marker after stop if simple.
+- Keep auto-centering simple: center on the first accepted point, then follow the latest accepted point while running.
+- Preserve existing timer, distance, pace, GPS filtering, and one-shot save flow.
+- Do not send live GPS points to the backend.
+
+### Frontend Phase 2C: GPS Quality Filters And Pre-Start GPS Status
+
+Status: Completed.
+
+- Add a simple GPS signal status model: Dead, Searching, Weak, Good.
+- On Run screen load, check location service and permission status before Start.
+- Keep Start enabled for Searching, Weak, and Good.
+- Disable Start only for Dead/unavailable GPS states such as disabled service, denied permission, denied forever permission, or fatal location setup errors.
+- Show clear GPS status/helper text before and during runs.
+- Show accepted point count, rejected point count, and latest accuracy.
+- Reject route point candidates with null/non-finite accuracy or accuracy greater than `20` meters.
+- Reject near-duplicate candidates less than `3` meters from the last accepted point.
+- Reject impossible GPS jumps where elapsed time is not positive or speed is greater than `8.0` meters per second.
+- Reject invalid coordinates outside valid latitude/longitude ranges.
+- Let rejected points update GPS status/accuracy, but never distance, pace, live map, sequence numbers, or saved payload.
+- Preserve the completed live map and one-shot save flow.
+- Do not change backend schema or APIs.
+
+### Frontend Phase 2D: Pause And Resume Run Tracking
+
+Status: Completed.
+
+- Add a simple run tracking state model if useful: Idle, Running, Paused, Saving, Completed.
+- Idle shows Start.
+- Running shows Pause and Stop.
+- Paused shows Resume and Stop.
+- Saving shows a disabled/loading state.
+- Pause must stop active-duration accumulation.
+- Resume must continue active duration from the previous total.
+- Paused time must not count toward saved duration or average pace.
+- GPS updates may still arrive while paused, but must not affect route points, distance, pace, map, sequence numbers, or saved payload.
+- Do not clear route points on Pause.
+- Do not reset timer or distance on Pause.
+- Do not call the backend on Start, Pause, or Resume.
+- Call `POST /api/runs` only on Stop.
+- Prevent distance jumps after Resume so movement during Pause is not counted.
+- Keep the existing in-memory accepted route point list for MVP.
+- Preserve live map and save flow behavior.
+- Do not change backend schema or APIs.
+
+Completed behavior:
+
+- Run screen now uses a simple run tracking state model: Idle, Running, Paused, Saving, Completed.
+- Running state shows Pause and Stop controls.
+- Paused state shows Resume and Stop controls.
+- Active duration excludes paused time.
+- Average pace uses active duration only.
+- GPS status can still update while paused.
+- Paused GPS points are not accepted and do not affect route, distance, pace, map, sequence numbers, or saved payload.
+- Resume skips distance for the first accepted point after pause so paused movement is not counted.
+- Route points remain in memory for the active run.
+- Backend is still called only once on Stop.
+
 ### History Delete
 
 Status: Completed.
@@ -470,6 +563,9 @@ Frontend status:
 - `momentum-app` implements Phase 1B real GPS tracking on physical iPhone.
 - `momentum-app` implements Phase 1C run history and run detail.
 - `momentum-app` implements Phase 2A saved route map on Run Detail.
+- `momentum-app` implements Phase 2B live map while running.
+- `momentum-app` implements Phase 2C GPS quality filters and pre-start GPS status.
+- `momentum-app` implements Phase 2D pause and resume run tracking.
 - `momentum-app` implements deleting runs from History.
 - `tool/run_phone.sh` runs the app on the connected iPhone and passes `API_BASE_URL`.
 - `tool/run_chrome.sh` runs the app in Chrome.
@@ -508,21 +604,23 @@ flutter test
 Frontend next task:
 
 - Work on `momentum-app`.
-- Choose the next feature after Phase 1C.
-- Recommended candidates: GPS diagnostics, release/profile phone testing workflow, isolated backend test DB, or saved map polish.
-- Do not add auth, social features, live run maps, route replay, route editing, or background GPS yet.
+- Choose the next post-MVP run tracking improvement.
+- Recommended candidates: release/profile phone testing workflow, isolated backend test DB, route map polish, or longer real-world run QA.
+- Keep the backend API contract unchanged.
 
 Important guardrails for the next chat:
 
 - Do not add authentication yet.
 - Do not add friends, social features, challenges, achievements, notifications, AI coaching, or watch support.
 - Do not build route maps in Phase 1A or 1B.
-- Saved route maps are complete for Run Detail; live maps while running are still out of scope.
+- Saved route maps are complete for Run Detail, and Phase 2B live Run screen maps are complete.
+- Phase 2C GPS quality filters and pre-start GPS status are complete.
+- Phase 2D pause/resume is complete and does not add backend partial-save APIs or call the backend on Pause/Resume.
 - Keep UI and code simple.
 - Avoid over-engineering.
 - Follow existing project structure.
 - For backend changes, follow TDD and keep controllers thin.
-- For frontend changes, Phase 1A and Phase 1B are complete. Keep Phase 1C focused on reviewing saved runs.
+- For frontend changes, preserve the completed Phase 1A, Phase 1B, Phase 1C, Phase 2A, Phase 2B, Phase 2C, and Phase 2D behavior.
 
 ## Completed Versus Not Completed
 
@@ -546,13 +644,16 @@ Completed:
 - Basic run history screen.
 - Run detail screen.
 - Saved route map on Run Detail.
+- Live map while running.
 - Run deletion from History.
+- Pre-start GPS status.
+- GPS signal status model.
+- Pause and resume run tracking.
 - Helper scripts for phone, Chrome, and simulator testing.
 - Frontend README local setup docs.
 
 Not completed:
 
-- Live map while running.
 - Route replay.
 - Route editing.
 - Isolated backend test database/profile.
@@ -610,7 +711,7 @@ Testing without same Wi-Fi:
 - Stay MVP-focused.
 - Do not add auth.
 - Do not add social features.
-- Do not add map drawing in Phase 1.
+- Do not add map drawing to Phase 1 flows beyond the completed saved route map and the Phase 2B live run map.
 - Do not optimize before the basic flow works.
 - Prefer simple code over clever abstractions.
 - Keep variable names clear and domain-specific.
