@@ -75,7 +75,7 @@ Backend implementation style chosen:
 
 ## Next Task
 
-Next recommended task: Frontend Phase 1 Run Screen.
+Next recommended task: Frontend Phase 1A Run Screen.
 
 Build the smallest frontend flow that can use the completed backend API:
 
@@ -83,12 +83,11 @@ Build the smallest frontend flow that can use the completed backend API:
 - Create a Run screen.
 - Add `Start` and `Stop` states.
 - Add a live timer.
-- Track route points in memory.
-- Calculate duration, distance, and average pace.
+- Use a fake/manual route payload.
 - Submit the completed run to `POST /api/runs`.
 - Show a simple saved run summary.
 
-Start with a simple UI and fake/manual route data if needed, then add real GPS with `geolocator` once the API contract is proven from the app.
+Do Phase 1A before real GPS. Add `geolocator`, permissions, real route collection, and real distance/pace calculations in Phase 1B.
 
 ## Current Goal
 
@@ -230,9 +229,9 @@ After stop:
 
 ## Phases
 
-### Phase 1: End-to-End MVP
+### Backend Phase 1: Completed
 
-Backend completed:
+Completed:
 
 - Backend entities.
 - Backend APIs.
@@ -241,31 +240,39 @@ Backend completed:
 - Swagger endpoint documentation.
 - Basic backend tests.
 
-Frontend remaining:
+### Frontend Phase 1A: Fake Route End-to-End
 
 - Run screen.
 - Start and stop functionality.
 - Timer.
-- GPS collection.
+- Fake/manual route payload.
 - Save completed run.
 - Show run summary.
 
-Phase 1 is done when a user can complete a run on the app and see it saved through the backend.
+Phase 1A is done when the Flutter app can save a completed fake/manual run through `POST /api/runs` and show the saved summary.
 
-### Phase 2: Route Map
+### Frontend Phase 1B: Real GPS Tracking
 
-Build later:
+- Add `geolocator`.
+- Add GPS permissions.
+- Collect real route points.
+- Calculate real distance and pace.
+- Save completed run.
+- Show saved run summary.
 
-- Draw route on a map.
-- View saved route.
+Phase 1B is done when the app can record a real route, calculate real run stats, save it, and show the saved summary.
 
-### Phase 3: Run History
+### Phase 2: Basic Run History
 
-Build later:
+- Basic Run History screen using `GET /api/runs`.
+- Show saved runs in a simple list.
+- Keep sorting and display simple.
 
-- Run history screen.
-- Run detail screen improvements.
-- Better summaries and sorting.
+### Phase 3: Route Map And Run Detail
+
+- Route map.
+- Run detail screen.
+- Saved route viewing.
 
 ## Implementation Checklist
 
@@ -277,6 +284,121 @@ Before generating code for each phase:
 4. Write tests first for backend behavior.
 5. Generate implementation code.
 6. Verify integration end to end.
+
+## New Chat Handoff
+
+Use this section when continuing in a new chat.
+
+Current project:
+
+- Product: Momentum, a simple running and fitness tracking app.
+- First feature: Run Tracking MVP.
+- Backend repository: `momentum-api`.
+- Backend package: `com.mttauto.momentum_api`.
+- Frontend repository: `momentum-app`.
+- Backend runs locally on `http://localhost:8080`.
+- PostgreSQL runs in Docker.
+- Local PostgreSQL host port is `5433`.
+- Local database name is `momentum`.
+
+Backend stack:
+
+- Java 17.
+- Spring Boot.
+- Maven.
+- Spring Data JPA.
+- PostgreSQL.
+- Flyway.
+- Docker Compose.
+- Swagger/OpenAPI.
+
+Frontend stack:
+
+- Flutter.
+- iOS first.
+- Web enabled.
+- Android later from the same Flutter codebase.
+
+Backend status:
+
+- Backend run tracking persistence is implemented.
+- Flyway migration creates `runs` and `route_points`.
+- Hibernate schema mode is `validate`; do not use `ddl-auto=update`.
+- DTOs are used at API boundaries.
+- Jakarta Bean Validation is used on create request DTOs.
+- `@Valid` is used in the controller.
+- `RunService` handles orchestration and the cross-field rule that `endTime` must be after `startTime`.
+- Entities use constructors for required state instead of broad public setters.
+- `Run.addRoutePoint()` owns keeping the bidirectional JPA relationship in sync.
+- Small comments exist only on important flows.
+
+Backend API contract:
+
+- `POST /api/runs`
+- `GET /api/runs`
+- `GET /api/runs/{id}`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- Health check: `GET /health`
+
+Example `POST /api/runs` payload:
+
+```json
+{
+  "startTime": "2026-06-13T10:00:00Z",
+  "endTime": "2026-06-13T10:20:00Z",
+  "distanceMeters": 3000,
+  "durationSeconds": 1200,
+  "averagePaceSecondsPerKm": 400,
+  "routePoints": [
+    {
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "recordedAt": "2026-06-13T10:00:10Z",
+      "accuracyMeters": 5,
+      "sequenceNumber": 1
+    }
+  ]
+}
+```
+
+Backend commands:
+
+```bash
+docker compose up --build
+```
+
+```bash
+docker compose up -d postgres
+```
+
+```bash
+./mvnw spring-boot:run
+```
+
+```bash
+./mvnw test
+```
+
+Frontend next task:
+
+- Work on `momentum-app`.
+- Implement Frontend Phase 1A first.
+- Do not add real GPS yet.
+- Create the Run screen and start/stop/timer flow.
+- Use a fake/manual route payload to verify the frontend can call `POST /api/runs`.
+- Show the saved run summary from the backend response.
+
+Important guardrails for the next chat:
+
+- Do not add authentication yet.
+- Do not add friends, social features, challenges, achievements, notifications, AI coaching, or watch support.
+- Do not build route maps in Phase 1A or 1B.
+- Keep UI and code simple.
+- Avoid over-engineering.
+- Follow existing project structure.
+- For backend changes, follow TDD and keep controllers thin.
+- For frontend changes, keep Phase 1A focused on proving the end-to-end save flow before adding real GPS.
 
 ## Guardrails
 
