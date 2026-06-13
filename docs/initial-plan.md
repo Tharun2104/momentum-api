@@ -38,3 +38,7 @@ Run the backend service outside Docker:
 - Add API contracts only when the frontend workflow is clear.
 - Keep database changes small and easy to verify.
 - Add tests around behavior as endpoints and services are introduced.
+
+## Feature Runbooks
+
+- [Run tracking MVP](run-tracking-runbook.md)
