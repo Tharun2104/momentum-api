@@ -45,6 +45,18 @@ public class Run {
     @Column(name = "average_pace_seconds_per_km", nullable = false)
     private Double averagePaceSecondsPerKm;
 
+    @Column(name = "app_step_count")
+    private Long appStepCount;
+
+    @Column(name = "health_kit_start_step_count")
+    private Long healthKitStartStepCount;
+
+    @Column(name = "health_kit_end_step_count")
+    private Long healthKitEndStepCount;
+
+    @Column(name = "health_kit_update_lag_seconds")
+    private Long healthKitUpdateLagSeconds;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -61,13 +73,21 @@ public class Run {
             Instant endTime,
             Double distanceMeters,
             Long durationSeconds,
-            Double averagePaceSecondsPerKm
+            Double averagePaceSecondsPerKm,
+            Long appStepCount,
+            Long healthKitStartStepCount,
+            Long healthKitEndStepCount,
+            Long healthKitUpdateLagSeconds
     ) {
         this.startTime = startTime;
         this.endTime = endTime;
         this.distanceMeters = distanceMeters;
         this.durationSeconds = durationSeconds;
         this.averagePaceSecondsPerKm = averagePaceSecondsPerKm;
+        this.appStepCount = appStepCount;
+        this.healthKitStartStepCount = healthKitStartStepCount;
+        this.healthKitEndStepCount = healthKitEndStepCount;
+        this.healthKitUpdateLagSeconds = healthKitUpdateLagSeconds;
     }
 
     @PrePersist

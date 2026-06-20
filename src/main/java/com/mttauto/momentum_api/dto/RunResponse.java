@@ -10,6 +10,11 @@ public record RunResponse(
         Double distanceMeters,
         Long durationSeconds,
         Double averagePaceSecondsPerKm,
+        Long appStepCount,
+        Long healthKitStartStepCount,
+        Long healthKitEndStepCount,
+        Long healthKitStepCount,
+        Long healthKitUpdateLagSeconds,
         Instant createdAt,
         Instant updatedAt,
         List<RoutePointResponse> routePoints

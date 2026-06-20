@@ -30,7 +30,11 @@ public class RunService {
                 request.endTime(),
                 request.distanceMeters(),
                 request.durationSeconds(),
-                request.averagePaceSecondsPerKm()
+                request.averagePaceSecondsPerKm(),
+                request.appStepCount(),
+                request.healthKitStartStepCount(),
+                request.healthKitEndStepCount(),
+                request.healthKitUpdateLagSeconds()
         );
 
         // Ensure route points are added in the correct sequence order
@@ -70,6 +74,17 @@ public class RunService {
         if (!request.endTime().isAfter(request.startTime())) {
             throw new IllegalArgumentException("endTime must be after startTime");
         }
+
+        if (hasHealthKitStepRange(request)
+                && request.healthKitEndStepCount() < request.healthKitStartStepCount()) {
+            throw new IllegalArgumentException(
+                    "healthKitEndStepCount must be greater than or equal to healthKitStartStepCount"
+            );
+        }
+    }
+
+    private boolean hasHealthKitStepRange(CreateRunRequest request) {
+        return request.healthKitStartStepCount() != null && request.healthKitEndStepCount() != null;
     }
 
     private RoutePoint toRoutePoint(CreateRoutePointRequest request) {
@@ -95,10 +110,23 @@ public class RunService {
                 run.getDistanceMeters(),
                 run.getDurationSeconds(),
                 run.getAveragePaceSecondsPerKm(),
+                run.getAppStepCount(),
+                run.getHealthKitStartStepCount(),
+                run.getHealthKitEndStepCount(),
+                calculateHealthKitStepCount(run),
+                run.getHealthKitUpdateLagSeconds(),
                 run.getCreatedAt(),
                 run.getUpdatedAt(),
                 routePoints
         );
+    }
+
+    private Long calculateHealthKitStepCount(Run run) {
+        if (run.getHealthKitStartStepCount() == null || run.getHealthKitEndStepCount() == null) {
+            return null;
+        }
+
+        return run.getHealthKitEndStepCount() - run.getHealthKitStartStepCount();
     }
 
     private RoutePointResponse toRoutePointResponse(RoutePoint routePoint) {

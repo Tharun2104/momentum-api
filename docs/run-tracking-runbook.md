@@ -49,6 +49,8 @@ Frontend:
 - Saved Run Detail supports viewing a completed route on a map.
 - Run screen supports a live map while tracking.
 - Run screen shows pre-start GPS status and GPS diagnostics.
+- Backend can store app and Apple Health step-count snapshots for completed runs.
+- Run screen tracks Momentum steps and compares them with Apple Health after saving.
 
 ## Completed So Far
 
@@ -67,6 +69,17 @@ Backend Phase 1 foundation is complete:
 - Added Swagger/OpenAPI documentation.
 - Added backend tests for service behavior and controller validation.
 - Verified Docker startup, Flyway validation, Swagger, and run API smoke tests.
+
+Backend Phase 3A step-count persistence is complete:
+
+- Created Flyway migration `V2__add_step_counts_to_runs.sql`.
+- Added nullable run columns for `appStepCount`, `healthKitStartStepCount`, `healthKitEndStepCount`, and `healthKitUpdateLagSeconds`.
+- `POST /api/runs` accepts the step-count fields when the client has them.
+- `RunResponse` returns the stored fields plus derived `healthKitStepCount`.
+- `healthKitStepCount` is calculated as `healthKitEndStepCount - healthKitStartStepCount`.
+- Service validation rejects HealthKit end counts that are lower than HealthKit start counts.
+- Bean validation rejects negative step counts and negative HealthKit lag seconds.
+- Existing clients can keep omitting step fields while the Flutter app phases in HealthKit/Pedometer work.
 
 Backend APIs currently available:
 
@@ -128,6 +141,18 @@ Frontend Phase 2B and Phase 2C are complete:
 - Rejected GPS points can update status/accuracy diagnostics but do not affect distance, pace, live map, sequence numbers, or saved payload.
 - Save flow still posts the completed run once on Stop.
 
+Frontend Phase 3A step counting is complete:
+
+- Run screen starts step tracking when the user taps `Start`.
+- Momentum app step count is read from iOS `CMPedometer` through a Flutter method channel.
+- Apple Health start and end total step counts are read through the existing `health` package.
+- Stop flow waits 10 seconds and rechecks Apple Health to account for HealthKit/Fitness update lag.
+- Saved run payload includes `appStepCount`, `healthKitStartStepCount`, `healthKitEndStepCount`, and `healthKitUpdateLagSeconds`.
+- Momentum app steps exclude steps detected during paused segments.
+- Run summary shows Momentum calculated steps and Apple tracked steps.
+- Run Detail shows the saved step comparison and HealthKit lag note.
+- Non-iOS platforms gracefully omit step values while keeping the run save flow working.
+
 Local backend URL configuration is complete:
 
 - App backend URL is configured through `API_BASE_URL`.
@@ -144,18 +169,21 @@ Important testing note:
 
 ## Next Task
 
-Next recommended task: choose the next post-MVP run tracking improvement.
+Next recommended task: validate Phase 3A on a physical iPhone.
 
-Phase 1C, Phase 2A, Phase 2B, Phase 2C, and Phase 2D are complete. Saved GPS runs can now be reviewed in the app with a saved route map, active runs show a live route map, GPS status/quality filtering is in place, and active runs can be paused and resumed.
+Phase 1C, Phase 2A, Phase 2B, Phase 2C, Phase 2D, and Phase 3A are complete in code. Saved GPS runs can now be reviewed in the app with a saved route map, active runs show a live route map, GPS status/quality filtering is in place, active runs can be paused and resumed, and completed runs persist step-count comparison data.
 
-Good next candidates:
+Phase 3A physical iPhone validation goal:
 
-- Better release/profile testing workflow for physical iPhone performance.
-- Isolated backend test database/profile so tests do not mutate local manual history.
-- Route map polish and interaction improvements.
-- More detailed manual QA pass for long real-world runs.
+- Run the app on a signed physical iPhone.
+- Grant Motion/Fitness and Apple Health step permissions.
+- Start a real run or walk, verify live Momentum steps increment while running.
+- Pause, walk briefly, resume, and verify paused movement is not counted in Momentum steps.
+- Stop the run and confirm the save waits for the 10-second Apple Health recheck.
+- Confirm Run Summary and Run Detail show Momentum calculated steps, Apple tracked steps, and the lag note.
+- Compare the displayed Apple tracked delta with the Apple Fitness/Health app after it catches up.
 
-Do not change the backend unless absolutely required.
+Do not change the backend for Phase 3A unless physical-device validation uncovers a missing contract field.
 
 ## Current Goal
 
@@ -218,6 +246,11 @@ Run:
 - `distanceMeters`
 - `durationSeconds`
 - `averagePaceSecondsPerKm`
+- `appStepCount`
+- `healthKitStartStepCount`
+- `healthKitEndStepCount`
+- `healthKitStepCount`
+- `healthKitUpdateLagSeconds`
 - `createdAt`
 - `updatedAt`
 
@@ -527,6 +560,10 @@ Example `POST /api/runs` payload:
   "distanceMeters": 3000,
   "durationSeconds": 1200,
   "averagePaceSecondsPerKm": 400,
+  "appStepCount": 2550,
+  "healthKitStartStepCount": 47000,
+  "healthKitEndStepCount": 49410,
+  "healthKitUpdateLagSeconds": 90,
   "routePoints": [
     {
       "latitude": 40.7128,
@@ -604,9 +641,12 @@ flutter test
 Frontend next task:
 
 - Work on `momentum-app`.
-- Choose the next post-MVP run tracking improvement.
-- Recommended candidates: release/profile phone testing workflow, isolated backend test DB, route map polish, or longer real-world run QA.
-- Keep the backend API contract unchanged.
+- Validate Phase 3A on a signed physical iPhone.
+- Confirm Motion/Fitness and Apple Health step permissions are requested.
+- Confirm live Momentum steps increment during a real run or walk.
+- Confirm paused movement is not counted in Momentum steps.
+- Confirm saved Run Summary and Run Detail show Momentum calculated steps, Apple tracked steps, and the 10-second HealthKit lag note.
+- Keep the backend API contract unchanged unless physical-device validation uncovers a missing field.
 
 Important guardrails for the next chat:
 
@@ -620,7 +660,7 @@ Important guardrails for the next chat:
 - Avoid over-engineering.
 - Follow existing project structure.
 - For backend changes, follow TDD and keep controllers thin.
-- For frontend changes, preserve the completed Phase 1A, Phase 1B, Phase 1C, Phase 2A, Phase 2B, Phase 2C, and Phase 2D behavior.
+- For frontend changes, preserve the completed Phase 1A, Phase 1B, Phase 1C, Phase 2A, Phase 2B, Phase 2C, Phase 2D, and Phase 3A behavior.
 
 ## Completed Versus Not Completed
 
@@ -649,11 +689,14 @@ Completed:
 - Pre-start GPS status.
 - GPS signal status model.
 - Pause and resume run tracking.
+- Backend step-count persistence and response fields for Phase 3A.
+- Frontend Phase 3A step counting and Apple Health comparison.
 - Helper scripts for phone, Chrome, and simulator testing.
 - Frontend README local setup docs.
 
 Not completed:
 
+- Physical iPhone validation of Phase 3A step counting and Apple Health comparison.
 - Route replay.
 - Route editing.
 - Isolated backend test database/profile.

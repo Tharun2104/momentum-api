@@ -49,6 +49,50 @@ class RunServiceTest {
     }
 
     @Test
+    void createRunSavesStepCountsAndCalculatesHealthKitStepCount() {
+        CreateRunRequest request = new CreateRunRequest(
+                Instant.parse("2026-06-12T10:00:00Z"),
+                Instant.parse("2026-06-12T10:06:00Z"),
+                1000.0,
+                360L,
+                360.0,
+                870L,
+                12_400L,
+                13_225L,
+                45L,
+                List.of(validRoutePoint(1), validRoutePoint(2))
+        );
+
+        RunResponse response = runService.createRun(request);
+
+        assertThat(response.appStepCount()).isEqualTo(870L);
+        assertThat(response.healthKitStartStepCount()).isEqualTo(12_400L);
+        assertThat(response.healthKitEndStepCount()).isEqualTo(13_225L);
+        assertThat(response.healthKitStepCount()).isEqualTo(825L);
+        assertThat(response.healthKitUpdateLagSeconds()).isEqualTo(45L);
+    }
+
+    @Test
+    void createRunRejectsHealthKitEndStepCountBeforeStartStepCount() {
+        CreateRunRequest request = new CreateRunRequest(
+                Instant.parse("2026-06-12T10:00:00Z"),
+                Instant.parse("2026-06-12T10:06:00Z"),
+                1000.0,
+                360L,
+                360.0,
+                870L,
+                12_400L,
+                12_399L,
+                45L,
+                List.of(validRoutePoint(1))
+        );
+
+        assertThatThrownBy(() -> runService.createRun(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("healthKitEndStepCount must be greater than or equal to healthKitStartStepCount");
+    }
+
+    @Test
     void createRunRejectsEndTimeBeforeStartTime() {
         CreateRunRequest request = new CreateRunRequest(
                 Instant.parse("2026-06-12T10:10:00Z"),
@@ -56,6 +100,10 @@ class RunServiceTest {
                 1000.0,
                 360L,
                 360.0,
+                null,
+                null,
+                null,
+                null,
                 List.of(validRoutePoint(1))
         );
 
@@ -98,6 +146,10 @@ class RunServiceTest {
                 1000.0,
                 360L,
                 360.0,
+                null,
+                null,
+                null,
+                null,
                 List.of(validRoutePoint(1), validRoutePoint(2))
         );
     }
