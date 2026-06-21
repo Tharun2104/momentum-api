@@ -19,6 +19,11 @@ docker compose up --build
 
 The API starts on `http://localhost:8080`.
 
+PostgreSQL data is stored in the persistent Docker volume `momentum-postgres-data`.
+Use `docker compose down` to stop containers without deleting database data. Do not
+use `docker compose down -v` unless you intentionally want to delete the local
+database.
+
 ## Run Locally Without Docker App
 
 Start only PostgreSQL:

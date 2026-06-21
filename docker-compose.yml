@@ -1,3 +1,5 @@
+name: momentum
+
 services:
   api:
     build:
@@ -31,3 +33,4 @@ services:
 
 volumes:
   momentum-postgres-data:
+    name: momentum-postgres-data

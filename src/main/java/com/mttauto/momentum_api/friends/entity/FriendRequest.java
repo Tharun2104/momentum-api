@@ -1,4 +1,4 @@
-package com.mttauto.momentum_api.moneytrack.entity;
+package com.mttauto.momentum_api.friends.entity;
 
 import com.mttauto.momentum_api.user.User;
 import jakarta.persistence.Column;
@@ -23,26 +23,28 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.time.Instant;
 
 @Entity
-@Table(name = "payment_methods")
+@Table(name = "friend_requests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PaymentMethod {
+public class FriendRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "sender_user_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private User user;
+    private User sender;
 
-    @Column(name = "nickname", nullable = false, length = 80)
-    private String nickname;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "receiver_user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private User receiver;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 40)
-    private PaymentMethodType type;
+    @Column(name = "status", nullable = false, length = 20)
+    private FriendRequestStatus status;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -50,10 +52,10 @@ public class PaymentMethod {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public PaymentMethod(User user, String nickname, PaymentMethodType type) {
-        this.user = user;
-        this.nickname = nickname;
-        this.type = type;
+    public FriendRequest(User sender, User receiver) {
+        this.sender = sender;
+        this.receiver = receiver;
+        this.status = FriendRequestStatus.PENDING;
     }
 
     @PrePersist
@@ -68,12 +70,11 @@ public class PaymentMethod {
         updatedAt = Instant.now();
     }
 
-    public void update(String nickname, PaymentMethodType type) {
-        this.nickname = nickname;
-        this.type = type;
+    public void accept() {
+        status = FriendRequestStatus.ACCEPTED;
     }
 
-    public String getUserId() {
-        return user.getId().toString();
+    public void reject() {
+        status = FriendRequestStatus.REJECTED;
     }
 }
