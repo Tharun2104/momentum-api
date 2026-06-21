@@ -46,3 +46,4 @@ curl http://localhost:8080/health
 - [Initial plan](docs/initial-plan.md)
 - [Digital Wellness runbook](docs/digital-wellness-runbook.md)
 - [Personal Finance PRD and Technical Specification](docs/personal-finance-prd-technical-spec.md)
+- [Expense Tracking runbook](docs/expense-tracking-runbook.md)

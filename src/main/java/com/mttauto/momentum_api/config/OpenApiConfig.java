@@ -14,6 +14,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Momentum API")
                         .version("0.1.0")
-                        .description("Backend APIs for Momentum run tracking."));
+                        .description("Backend APIs for Momentum run tracking and lightweight manual expense tracking."));
     }
 }

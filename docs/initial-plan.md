@@ -43,3 +43,4 @@ Run the backend service outside Docker:
 
 - [Run tracking MVP](run-tracking-runbook.md)
 - [Personal Finance PRD and Technical Specification](personal-finance-prd-technical-spec.md)
+- [Expense Tracking runbook](expense-tracking-runbook.md)
