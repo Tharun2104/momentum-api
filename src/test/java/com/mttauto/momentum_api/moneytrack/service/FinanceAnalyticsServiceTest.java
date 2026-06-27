@@ -1,13 +1,18 @@
 package com.mttauto.momentum_api.moneytrack.service;
 
 import com.mttauto.momentum_api.auth.CurrentUserContext;
+import com.mttauto.momentum_api.friends.entity.FriendRequest;
+import com.mttauto.momentum_api.friends.repository.FriendRequestRepository;
 import com.mttauto.momentum_api.moneytrack.dto.CreateExpenseRequest;
+import com.mttauto.momentum_api.moneytrack.dto.CreateExpenseSplitRequest;
 import com.mttauto.momentum_api.moneytrack.dto.CreatePaymentMethodRequest;
 import com.mttauto.momentum_api.moneytrack.dto.MonthlySummaryResponse;
 import com.mttauto.momentum_api.moneytrack.entity.ExpenseCategory;
 import com.mttauto.momentum_api.moneytrack.entity.PaymentMethodType;
+import com.mttauto.momentum_api.moneytrack.entity.SplitType;
 import com.mttauto.momentum_api.moneytrack.repository.ExpenseRepository;
 import com.mttauto.momentum_api.moneytrack.repository.PaymentMethodRepository;
+import com.mttauto.momentum_api.moneytrack.repository.SharedExpenseRepository;
 import com.mttauto.momentum_api.user.User;
 import com.mttauto.momentum_api.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +36,12 @@ class FinanceAnalyticsServiceTest {
     private PaymentMethodRepository paymentMethodRepository;
 
     @Autowired
+    private SharedExpenseRepository sharedExpenseRepository;
+
+    @Autowired
+    private FriendRequestRepository friendRequestRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -42,13 +53,18 @@ class FinanceAnalyticsServiceTest {
     @Autowired
     private FinanceAnalyticsService financeAnalyticsService;
 
+    private User currentUser;
+
     @BeforeEach
     void setUp() {
         CurrentUserContext.clear();
+        sharedExpenseRepository.deleteAll();
+        friendRequestRepository.deleteAll();
         expenseRepository.deleteAll();
         paymentMethodRepository.deleteAll();
         userRepository.deleteAll();
-        CurrentUserContext.set(userRepository.save(new User("User One", "user1@example.com", "password-hash")));
+        currentUser = userRepository.save(new User("User One", "user1@example.com", "password-hash"));
+        CurrentUserContext.set(currentUser);
     }
 
     @Test
@@ -62,6 +78,29 @@ class FinanceAnalyticsServiceTest {
         assertThat(response.totalSpent()).isEqualByComparingTo("60.00");
         assertThat(response.transactionCount()).isEqualTo(2);
         assertThat(response.averageTransactionAmount()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
+    void getMonthlySummaryCountsOnlyPersonalHalfForSplitExpense() {
+        User friend = userRepository.save(new User("Friend One", "friend@example.com", "password-hash"));
+        FriendRequest friendRequest = new FriendRequest(currentUser, friend);
+        friendRequest.accept();
+        friendRequestRepository.save(friendRequest);
+        expenseService.createExpense(new CreateExpenseRequest(
+                new BigDecimal("100.00"),
+                ExpenseCategory.FOOD,
+                "Dinner",
+                null,
+                LocalDate.of(2026, 6, 20),
+                null,
+                new CreateExpenseSplitRequest(true, friend.getId(), SplitType.EQUAL)
+        ));
+
+        MonthlySummaryResponse response = financeAnalyticsService.getMonthlySummary(YearMonth.of(2026, 6));
+
+        assertThat(response.totalSpent()).isEqualByComparingTo("50.00");
+        assertThat(response.transactionCount()).isEqualTo(1);
+        assertThat(response.averageTransactionAmount()).isEqualByComparingTo("50.00");
     }
 
     @Test
@@ -109,6 +148,7 @@ class FinanceAnalyticsServiceTest {
                 "Merchant",
                 paymentMethodId,
                 expenseDate,
+                null,
                 null
         );
     }

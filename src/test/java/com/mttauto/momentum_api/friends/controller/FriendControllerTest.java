@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,6 +47,18 @@ class FriendControllerTest {
         mockMvc.perform(get("/api/users/search")
                         .header("Authorization", bearer(tokenUser1))
                         .param("email", "user2@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(user2Id))
+                .andExpect(jsonPath("$.name").value("User Two"))
+                .andExpect(jsonPath("$.email").value("user2@example.com"))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    }
+
+    @Test
+    void searchUserByIdReturnsSafeFields() throws Exception {
+        mockMvc.perform(get("/api/users/search")
+                        .header("Authorization", bearer(tokenUser1))
+                        .param("id", user2Id.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(user2Id))
                 .andExpect(jsonPath("$.name").value("User Two"))
@@ -190,6 +203,15 @@ class FriendControllerTest {
     void friendApisRequireAuthentication() throws Exception {
         mockMvc.perform(get("/api/friends"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void corsPreflightRequestsAreAllowedBeforeAuthentication() throws Exception {
+        mockMvc.perform(options("/api/friends")
+                        .header("Origin", "http://localhost:3000")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "authorization,content-type"))
+                .andExpect(status().isOk());
     }
 
     private Long sendFriendRequest(Long receiverUserId, String token) throws Exception {

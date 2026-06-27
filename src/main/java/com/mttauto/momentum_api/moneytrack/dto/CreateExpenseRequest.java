@@ -25,6 +25,8 @@ public record CreateExpenseRequest(
         LocalDate expenseDate,
 
         @Size(max = 500, message = "notes must be 500 characters or fewer")
-        String notes
+        String notes,
+
+        CreateExpenseSplitRequest split
 ) {
 }

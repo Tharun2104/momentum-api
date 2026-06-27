@@ -15,6 +15,7 @@ public record ExpenseResponse(
         PaymentMethodResponse paymentMethod,
         LocalDate expenseDate,
         String notes,
+        ExpenseSplitSummaryResponse split,
         Instant createdAt,
         Instant updatedAt
 ) {

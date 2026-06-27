@@ -1,15 +1,20 @@
 package com.mttauto.momentum_api.moneytrack.service;
 
 import com.mttauto.momentum_api.auth.CurrentUserContext;
+import com.mttauto.momentum_api.friends.entity.FriendRequest;
+import com.mttauto.momentum_api.friends.repository.FriendRequestRepository;
 import com.mttauto.momentum_api.moneytrack.dto.CreateExpenseRequest;
+import com.mttauto.momentum_api.moneytrack.dto.CreateExpenseSplitRequest;
 import com.mttauto.momentum_api.moneytrack.dto.CreatePaymentMethodRequest;
 import com.mttauto.momentum_api.moneytrack.dto.ExpenseResponse;
 import com.mttauto.momentum_api.moneytrack.dto.UpdateExpenseRequest;
 import com.mttauto.momentum_api.moneytrack.entity.ExpenseCategory;
 import com.mttauto.momentum_api.moneytrack.entity.PaymentMethodType;
+import com.mttauto.momentum_api.moneytrack.entity.SplitType;
 import com.mttauto.momentum_api.exception.ResourceNotFoundException;
 import com.mttauto.momentum_api.moneytrack.repository.ExpenseRepository;
 import com.mttauto.momentum_api.moneytrack.repository.PaymentMethodRepository;
+import com.mttauto.momentum_api.moneytrack.repository.SharedExpenseRepository;
 import com.mttauto.momentum_api.user.User;
 import com.mttauto.momentum_api.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +39,12 @@ class ExpenseServiceTest {
     private PaymentMethodRepository paymentMethodRepository;
 
     @Autowired
+    private SharedExpenseRepository sharedExpenseRepository;
+
+    @Autowired
+    private FriendRequestRepository friendRequestRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -47,6 +58,8 @@ class ExpenseServiceTest {
     @BeforeEach
     void setUp() {
         CurrentUserContext.clear();
+        sharedExpenseRepository.deleteAll();
+        friendRequestRepository.deleteAll();
         expenseRepository.deleteAll();
         paymentMethodRepository.deleteAll();
         userRepository.deleteAll();
@@ -64,7 +77,8 @@ class ExpenseServiceTest {
                 "Walmart",
                 paymentMethodId,
                 LocalDate.of(2026, 6, 20),
-                "Weekly groceries"
+                "Weekly groceries",
+                null
         ));
 
         assertThat(response.id()).isNotNull();
@@ -92,12 +106,139 @@ class ExpenseServiceTest {
                 "Lunch",
                 paymentMethodId,
                 LocalDate.of(2026, 6, 20),
+                null,
                 null
         );
 
         assertThatThrownBy(() -> expenseService.createExpense(request))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Payment method not found with id " + paymentMethodId);
+    }
+
+    @Test
+    void createSplitExpenseSavesOnlyCurrentUsersHalfAsPersonalExpense() {
+        User friend = createAcceptedFriend("Friend One", "friend@example.com");
+
+        ExpenseResponse response = expenseService.createExpense(new CreateExpenseRequest(
+                new BigDecimal("100.00"),
+                ExpenseCategory.FOOD,
+                "Dinner",
+                createPaymentMethod("Visa"),
+                LocalDate.of(2026, 6, 20),
+                null,
+                new CreateExpenseSplitRequest(true, friend.getId(), SplitType.EQUAL)
+        ));
+
+        assertThat(response.amount()).isEqualByComparingTo("50.00");
+        assertThat(expenseRepository.findByUser_IdOrderByExpenseDateDescCreatedAtDesc(currentUser.getId()))
+                .singleElement()
+                .extracting("amount")
+                .isEqualTo(new BigDecimal("50.00"));
+        assertThat(expenseRepository.findByUser_IdOrderByExpenseDateDescCreatedAtDesc(friend.getId())).isEmpty();
+    }
+
+    @Test
+    void createSplitExpenseCreatesSharedExpenseWithPayerAndFriendParticipants() {
+        User friend = createAcceptedFriend("Friend One", "friend@example.com");
+
+        expenseService.createExpense(new CreateExpenseRequest(
+                new BigDecimal("100.00"),
+                ExpenseCategory.FOOD,
+                "Dinner",
+                createPaymentMethod("Visa"),
+                LocalDate.of(2026, 6, 20),
+                null,
+                new CreateExpenseSplitRequest(true, friend.getId(), SplitType.EQUAL)
+        ));
+
+        var sharedExpense = sharedExpenseRepository.findVisibleToUser(currentUser.getId()).get(0);
+
+        assertThat(sharedExpense.getTotalAmount()).isEqualByComparingTo("100.00");
+        assertThat(sharedExpense.getOriginalExpense().getId()).isNotNull();
+        assertThat(expenseRepository.findByIdAndUser_Id(sharedExpense.getOriginalExpense().getId(), currentUser.getId()))
+                .get()
+                .extracting("amount")
+                .isEqualTo(new BigDecimal("50.00"));
+        assertThat(sharedExpense.getParticipants())
+                .filteredOn(participant -> participant.getUser().getId().equals(currentUser.getId()))
+                .singleElement()
+                .satisfies(participant -> {
+                    assertThat(participant.getShareAmount()).isEqualByComparingTo("50.00");
+                    assertThat(participant.getPaidAmount()).isEqualByComparingTo("100.00");
+                    assertThat(participant.getNetAmount()).isEqualByComparingTo("50.00");
+                });
+        assertThat(sharedExpense.getParticipants())
+                .filteredOn(participant -> participant.getUser().getId().equals(friend.getId()))
+                .singleElement()
+                .satisfies(participant -> {
+                    assertThat(participant.getShareAmount()).isEqualByComparingTo("50.00");
+                    assertThat(participant.getPaidAmount()).isEqualByComparingTo("0.00");
+                    assertThat(participant.getNetAmount()).isEqualByComparingTo("-50.00");
+                });
+    }
+
+    @Test
+    void createSplitExpenseCanSplitEquallyAcrossMultipleFriends() {
+        User friendOne = createAcceptedFriend("Friend One", "friend1@example.com");
+        User friendTwo = createAcceptedFriend("Friend Two", "friend2@example.com");
+        User friendThree = createAcceptedFriend("Friend Three", "friend3@example.com");
+
+        ExpenseResponse response = expenseService.createExpense(new CreateExpenseRequest(
+                new BigDecimal("120.00"),
+                ExpenseCategory.FOOD,
+                "Group Dinner",
+                createPaymentMethod("Visa"),
+                LocalDate.of(2026, 6, 20),
+                null,
+                new CreateExpenseSplitRequest(
+                        true,
+                        null,
+                        List.of(friendOne.getId(), friendTwo.getId(), friendThree.getId()),
+                        SplitType.EQUAL
+                )
+        ));
+
+        assertThat(response.amount()).isEqualByComparingTo("30.00");
+        var sharedExpense = sharedExpenseRepository.findVisibleToUser(currentUser.getId()).get(0);
+        assertThat(sharedExpense.getParticipants()).hasSize(4);
+        assertThat(sharedExpense.getParticipants())
+                .filteredOn(participant -> participant.getUser().getId().equals(currentUser.getId()))
+                .singleElement()
+                .satisfies(participant -> {
+                    assertThat(participant.getShareAmount()).isEqualByComparingTo("30.00");
+                    assertThat(participant.getPaidAmount()).isEqualByComparingTo("120.00");
+                    assertThat(participant.getNetAmount()).isEqualByComparingTo("90.00");
+                });
+        assertThat(sharedExpense.getParticipants())
+                .filteredOn(participant -> !participant.getUser().getId().equals(currentUser.getId()))
+                .allSatisfy(participant -> {
+                    assertThat(participant.getShareAmount()).isEqualByComparingTo("30.00");
+                    assertThat(participant.getPaidAmount()).isEqualByComparingTo("0.00");
+                    assertThat(participant.getNetAmount()).isEqualByComparingTo("-30.00");
+                });
+    }
+
+    @Test
+    void getExpenseIncludesSplitSummaryWhenExpenseCameFromSplit() {
+        User friend = createAcceptedFriend("Prathibha", "prathibha@example.com");
+        ExpenseResponse created = expenseService.createExpense(new CreateExpenseRequest(
+                new BigDecimal("100.00"),
+                ExpenseCategory.FOOD,
+                "Dinner",
+                createPaymentMethod("Visa"),
+                LocalDate.of(2026, 6, 20),
+                "Birthday",
+                new CreateExpenseSplitRequest(true, friend.getId(), SplitType.EQUAL)
+        ));
+
+        ExpenseResponse response = expenseService.getExpense(created.id());
+
+        assertThat(response.amount()).isEqualByComparingTo("50.00");
+        assertThat(response.split()).isNotNull();
+        assertThat(response.split().friendName()).isEqualTo("Prathibha");
+        assertThat(response.split().totalAmount()).isEqualByComparingTo("100.00");
+        assertThat(response.split().currentUserShareAmount()).isEqualByComparingTo("50.00");
+        assertThat(response.split().displayText()).isEqualTo("Prathibha owes you $50");
     }
 
     @Test
@@ -153,6 +294,14 @@ class ExpenseServiceTest {
         ).id();
     }
 
+    private User createAcceptedFriend(String name, String email) {
+        User friend = userRepository.save(new User(name, email, "password-hash"));
+        FriendRequest friendRequest = new FriendRequest(currentUser, friend);
+        friendRequest.accept();
+        friendRequestRepository.save(friendRequest);
+        return friend;
+    }
+
     private CreateExpenseRequest validExpense(
             String merchantName,
             String amount,
@@ -165,6 +314,7 @@ class ExpenseServiceTest {
                 merchantName,
                 paymentMethodId,
                 expenseDate,
+                null,
                 null
         );
     }
