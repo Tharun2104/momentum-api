@@ -6,11 +6,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/health")
 public class HealthController {
 
-    @GetMapping
+    @GetMapping("/")
+    public ResponseEntity<String> root() {
+        return ResponseEntity.ok("Momentum API is running");
+    }
+
+    @GetMapping("/health")
     public ResponseEntity<String> checkHealth() {
-        return ResponseEntity.ok("Momentum API hero is running");
+        return ResponseEntity.ok("OK");
     }
 }

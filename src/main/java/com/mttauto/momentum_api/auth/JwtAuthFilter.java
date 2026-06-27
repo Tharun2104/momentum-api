@@ -61,7 +61,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return "OPTIONS".equals(method)
                 || ("POST".equals(method) && ("/auth/register".equals(path) || "/auth/login".equals(path)))
-                || ("GET".equals(method) && ("/health".equals(path) || "/actuator/health".equals(path)));
+                || ("GET".equals(method) && ("/".equals(path) || "/health".equals(path) || "/actuator/health".equals(path)));
     }
 
     private String bearerToken(HttpServletRequest request) {
