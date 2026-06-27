@@ -1,10 +1,10 @@
 # Deploy Momentum API to Render
 
-This backend is a Spring Boot API with PostgreSQL. The backend folder is `momentum-api`.
+This backend is a Spring Boot API deployed to Render with PostgreSQL hosted on Supabase. The backend folder is `momentum-api`.
 
 ## 1. Create the PostgreSQL database
 
-1. In Render, create a new PostgreSQL database.
+1. In Supabase, create or open your project.
 2. Copy the database host, database name, username, and password.
 3. Build the JDBC URL in this format:
 
@@ -12,7 +12,13 @@ This backend is a Spring Boot API with PostgreSQL. The backend folder is `moment
 jdbc:postgresql://HOST:5432/DB_NAME
 ```
 
-Render may show an internal database URL that starts with `postgresql://`. Spring Boot needs the JDBC form: `jdbc:postgresql://`.
+For your current Supabase project:
+
+```text
+jdbc:postgresql://db.dfpnhgogvweboiuradlu.supabase.co:5432/postgres
+```
+
+Spring Boot needs the JDBC form: `jdbc:postgresql://`, not `postgresql://`. If Supabase requires SSL for your connection mode, append `?sslmode=require` to the URL.
 
 ## 2. Create the Web Service
 
@@ -34,12 +40,15 @@ The Maven wrapper exists at `momentum-api/mvnw` and should remain executable.
 Add these environment variables to the Render Web Service:
 
 ```text
-SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/DB_NAME
-SPRING_DATASOURCE_USERNAME=USERNAME
-SPRING_DATASOURCE_PASSWORD=PASSWORD
+SPRING_PROFILES_ACTIVE=deployment
+SPRING_DATASOURCE_URL=jdbc:postgresql://db.dfpnhgogvweboiuradlu.supabase.co:5432/postgres
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=YOUR_PASSWORD_HERE
 ```
 
 Render sets `PORT` automatically. The app reads it with `server.port=${PORT:8080}`.
+
+Local development uses the `local` profile by default and reads `application-local.properties`.
 
 ## 4. Verify deployment
 

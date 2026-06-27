@@ -38,3 +38,4 @@ replay_pid*
 .env
 .env.*
 application-local.properties
+!src/main/resources/application-local.properties
